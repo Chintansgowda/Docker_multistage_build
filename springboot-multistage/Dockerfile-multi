@@ -41,4 +41,7 @@ COPY --from=builder /build/target/*.jar ./app.jar
 
 EXPOSE 8080
 
+# Define the command to run when the container starts
+# Launches the Spring Boot app using the packaged JAR
+# Using exec form ["java", "-jar"] instead of shell form for proper
 ENTRYPOINT ["java", "-jar", "app.jar"]
