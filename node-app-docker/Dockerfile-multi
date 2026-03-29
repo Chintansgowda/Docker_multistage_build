@@ -1,6 +1,6 @@
 #STAGE 1: Build Stage
-FROM node:20-slim as builder
 
+FROM node:20-slim as builder
 
 WORKDIR /app
 
@@ -11,6 +11,7 @@ RUN npm install
 COPY . .
 
 #STAGE 2: Production Stage
+
 FROM gcr.io/distroless/nodejs20-debian12
 
 WORKDIR /app
