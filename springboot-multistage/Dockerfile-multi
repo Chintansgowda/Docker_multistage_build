@@ -2,29 +2,25 @@
 # STAGE 1: BUILD STAGE
 # Using official Maven image bundled with Eclipse Temurin JDK 11
 # This stage compiles the source code and packages it as a JAR
-
 FROM maven:3.9-eclipse-temurin-11 AS builder
 
 # All subsequent commands will run relative to this path
-
 WORKDIR /build
 
 # Copy only the pom.xml first (before copying source code)
-
 COPY pom.xml /build/
 
 # Download all Maven dependencies defined in pom.xml
 # and cache them as a separate Docker layer
 # Next time you build, this layer is reused if pom.xml is unchanged
-
 RUN mvn dependency:go-offline
 
+# Now copy the entire project source code into the container
 COPY . .
 
 # Build the Spring Boot application and package it as a JAR
 # -DskipTests : skips running unit tests during Docker build
 # Output JAR will be created at: /build/target/*.jar
-
 RUN mvn clean package -DskipTests
 
 # STAGE 2: RUNTIME STAGE
