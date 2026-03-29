@@ -1,63 +1,50 @@
-# ============================================================
+
 # STAGE 1: BUILD STAGE
 # Using official Maven image bundled with Eclipse Temurin JDK 11
 # This stage compiles the source code and packages it as a JAR
-# Maven is only needed for building — not for running the app
-# ============================================================
+
 FROM maven:3.9-eclipse-temurin-11 AS builder
 
-# Set the working directory inside the builder container
 # All subsequent commands will run relative to this path
+
 WORKDIR /build
 
 # Copy only the pom.xml first (before copying source code)
-# This is a Docker layer caching trick:
-# If pom.xml hasn't changed, Docker reuses the cached dependency
-# layer and skips re-downloading on every build — saves time!
+
 COPY pom.xml /build/
 
 # Download all Maven dependencies defined in pom.xml
 # and cache them as a separate Docker layer
 # Next time you build, this layer is reused if pom.xml is unchanged
+
 RUN mvn dependency:go-offline
 
-# Now copy the entire project source code into the container
-# Done after dependency download to maximize cache efficiency
-# (source code changes more often than dependencies)
 COPY . .
 
 # Build the Spring Boot application and package it as a JAR
 # -DskipTests : skips running unit tests during Docker build
 # Output JAR will be created at: /build/target/*.jar
+
 RUN mvn clean package -DskipTests
 
-
-# ============================================================
 # STAGE 2: RUNTIME STAGE
+
 # Using a lightweight JRE-only Alpine image (no Maven, no JDK)
 # This keeps the final image small and production-ready
 # The builder stage is completely discarded after this
 # Final image only contains JRE + the JAR — nothing else
-# ============================================================
+
 FROM eclipse-temurin:11-jre-alpine
 
 # Set the working directory inside the final runtime container
+
 WORKDIR /app
 
 # Copy ONLY the built JAR from the builder stage
-# Everything else (source code, Maven, dependencies cache) is left behind
-# --from=builder : refers to the first stage named "builder"
-# /build/target/*.jar : location of JAR inside builder container
 # ./app.jar : destination name inside this runtime container
+
 COPY --from=builder /build/target/*.jar ./app.jar
 
-# Inform Docker that the container listens on port 8080 at runtime
-# Note: This is documentation only — it does NOT actually publish the port
-# You still need -p 8080:8080 in your docker run command
 EXPOSE 8080
 
-# Define the command to run when the container starts
-# Launches the Spring Boot app using the packaged JAR
-# Using exec form ["java", "-jar"] instead of shell form for proper
-# signal handling (e.g., graceful shutdown with CTRL+C or docker stop)
 ENTRYPOINT ["java", "-jar", "app.jar"]
