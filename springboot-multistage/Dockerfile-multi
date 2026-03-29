@@ -33,12 +33,10 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:11-jre-alpine
 
 # Set the working directory inside the final runtime container
-
 WORKDIR /app
 
 # Copy ONLY the built JAR from the builder stage
 # ./app.jar : destination name inside this runtime container
-
 COPY --from=builder /build/target/*.jar ./app.jar
 
 EXPOSE 8080
