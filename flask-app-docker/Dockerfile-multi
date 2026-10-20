@@ -1,28 +1,50 @@
-# Build Stage
+
+# Build Stage: Use Python 3.9 slim image to install dependencies and prepare the application
 FROM python:3.9-slim AS builder
+
+# Set the working directory inside the builder container
 WORKDIR /app
 
-# install dependencies into /app/deps
+# Copy the dependency list into the container
 COPY requirements.txt .
+
+# Install Python dependencies into a separate directory (/app/deps)
+# --no-cache-dir avoids storing pip's download cache
+# --target installs packages into the specified directory
 RUN pip install --no-cache-dir -r requirements.txt --target=/app/deps
 
-# copy application code
+# Copy the application source code into the builder stage
 COPY . .
 
-# Final Distroless Stage
+# Final Stage: Use a minimal Distroless Python image without a shell or package manager
 FROM gcr.io/distroless/python3-debian11
-WORKDIR /app
 
-# copy deps and app from builder
-COPY --from=builder /app/deps /app/deps
-COPY --from=builder /app .
+# Set the working directory inside the final container
+WORKDIR /apprun
 
-# env vars
+# Copy only the installed dependencies from the builder stage
+COPY --from=builder /app/deps /apprun/deps
+
+# Copy the application files from the builder stage into the final image
+#Notice here we are just copying the applications run time required files we are not copying the requirements.txt coz that haas been already copied form build stage
+COPY --from=builder /app/run.py .
+COPY --from=builder /app/app.py .
+
+# COPY --from=builder /app . # It copies everything
+
+# Send Python output directly to the container logs without buffering
 ENV PYTHONUNBUFFERED=1
-ENV PYTHONPATH="/app/deps"
 
-# app port
+# Tell Python where to find the installed dependencies
+ENV PYTHONPATH="/apprun/deps"
+
+# Document that the application is intended to use port 80
 EXPOSE 80
 
-# run app
+# The Distroless Python image provides a Python ENTRYPOINT
+# CMD supplies the script argument to that inherited executable
+# Together, they execute the equivalent of: python run.py
 CMD ["run.py"]
+
+
+

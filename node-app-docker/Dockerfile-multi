@@ -1,25 +1,35 @@
-#STAGE 1: Build Stage
+# STAGE 1: Build Stage
+# Use Node.js 20 slim image to install dependencies
+FROM node:20-slim AS builder
 
-FROM node:20-slim as builder
-
+# Set the working directory inside the container
 WORKDIR /app
 
+# Copy package.json and package-lock.json if available
 COPY package*.json /app/
 
+# Install application dependencies
+# npm creates /app/node_modules automatically
 RUN npm install
 
+# Copy application source code into the builder stage
 COPY . .
 
-#STAGE 2: Production Stage
-
+# STAGE 2: Production Stage
+# Use a lightweight Distroless Node.js 20 image
 FROM gcr.io/distroless/nodejs20-debian12
 
+# Set the working directory inside the final container
 WORKDIR /app
 
+# Copy installed dependencies from the builder stage
 COPY --from=builder /app/node_modules ./node_modules
 
-COPY --from=builder /app /app/
+# Copy application source code from the builder stage
+COPY --from=builder /app/src ./src
 
+# Document the port the application is expected to use
 EXPOSE 3000
 
-CMD [ "src/index.js" ]
+# Specify the JavaScript file to execute using the inherited Node.js entrypoint
+CMD ["src/index.js"]

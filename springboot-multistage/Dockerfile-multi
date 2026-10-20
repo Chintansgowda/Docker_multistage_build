@@ -10,9 +10,7 @@ WORKDIR /build
 # Copy only the pom.xml first (before copying source code)
 COPY pom.xml /build/
 
-# Download all Maven dependencies defined in pom.xml
-# and cache them as a separate Docker layer
-# Next time you build, this layer is reused if pom.xml is unchanged
+# Downloads all the Maven dependencies defined in pom.xml
 RUN mvn dependency:go-offline
 
 # Now copy the entire project source code into the container
@@ -21,6 +19,7 @@ COPY . .
 # Build the Spring Boot application and package it as a JAR
 # -DskipTests : skips running unit tests during Docker build
 # Output JAR will be created at: /build/target/*.jar
+
 RUN mvn clean package -DskipTests
 
 # STAGE 2: RUNTIME STAGE
@@ -33,10 +32,12 @@ RUN mvn clean package -DskipTests
 FROM eclipse-temurin:11-jre-alpine
 
 # Set the working directory inside the final runtime container
+
 WORKDIR /app
 
 # Copy ONLY the built JAR from the builder stage
 # ./app.jar : destination name inside this runtime container
+
 COPY --from=builder /build/target/*.jar ./app.jar
 
 EXPOSE 8080
@@ -44,4 +45,12 @@ EXPOSE 8080
 # Define the command to run when the container starts
 # Launches the Spring Boot app using the packaged JAR
 # Using exec form ["java", "-jar"] instead of shell form for proper
+
 ENTRYPOINT ["java", "-jar", "app.jar"]
+
+
+
+
+## In a multi-stage Spring Boot build, Maven compiles the source code and packages the application and its dependencies into an executable JAR in the builder stage.
+# In the runtime stage, we copy only the JAR because it already contains the compiled application code and required dependencies.
+# The runtime image only needs the JRE to execute the JAR; Maven and the original source files are not required.
